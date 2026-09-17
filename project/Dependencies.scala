@@ -52,6 +52,9 @@ object Dependencies {
 
   def getScalaDependency(scalaVersion: String): ModuleID = "org.scala-lang" % "scala-library" % scalaVersion % Provided
 
+  def SparkCobolServerlessDependencies(scalaVersion: String): Seq[ModuleID] =
+    SparkCobolDependencies(scalaVersion)
+
   def SparkCobolDependencies(scalaVersion: String): Seq[ModuleID] = Seq(
     // provided
     "org.apache.spark" %% "spark-sql"        % sparkVersion(scalaVersion) % Provided,

@@ -1,0 +1,30 @@
+bundle:
+  name: cobrix-serverless-reader
+
+include:
+  - resources/*.yml
+
+variables:
+  catalog:
+    default: citi_lab
+  schema:
+    default: citi_demo
+  volume:
+    default: cobrix_poc
+  jar_path:
+    default: /Volumes/${var.catalog}/${var.schema}/${var.volume}/spark-cobol-serverless-bundle.jar
+  examples_jar_path:
+    default: /Volumes/${var.catalog}/${var.schema}/${var.volume}/databricks-examples-bundle.jar
+  classic_jar_path:
+    default: /Volumes/${var.catalog}/${var.schema}/${var.volume}/spark-cobol-bundle.jar
+  data_path:
+    default: /Volumes/${var.catalog}/${var.schema}/${var.volume}/test1_data
+  copybook_path:
+    default: /Volumes/${var.catalog}/${var.schema}/${var.volume}/test1_copybook.cob
+  environment_version:
+    default: '5'
+
+targets:
+  dev:
+    mode: development
+    default: true

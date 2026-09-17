@@ -25,6 +25,8 @@ lazy val scala213 = "2.13.18"
 
 ThisBuild / organization := "za.co.absa.cobrix"
 
+ThisBuild / resolvers += "Databricks Maven Proxy" at "https://maven-proxy.cloud.databricks.com"
+
 ThisBuild / scalaVersion := scala213
 ThisBuild / crossScalaVersions := Seq(scala211, scala212, scala213)
 
@@ -60,7 +62,7 @@ lazy val cobrix = (project in file("."))
     publish := {},
     publishLocal := {}
   )
-  .aggregate(cobolParser, cobolConverters, sparkCobol)
+  .aggregate(cobolParser, cobolConverters, sparkCobol, sparkCobolServerless, databricksExamples)
 
 lazy val cobolParser = (project in file("cobol-parser"))
   .enablePlugins(ShadingPlugin)
@@ -124,6 +126,32 @@ lazy val sparkCobol = (project in file("spark-cobol"))
   )
   .enablePlugins(AutomateHeaderPlugin)
 
+lazy val sparkCobolServerless = (project in file("spark-cobol-serverless"))
+  .dependsOn(sparkCobol)
+  .settings(
+    name := "spark-cobol-serverless",
+    crossScalaVersions := List(scala213),
+    libraryDependencies ++= SparkCobolServerlessDependencies(scalaVersion.value) :+ getScalaDependency(scalaVersion.value),
+    serverlessAssemblySettings,
+    publishArtifact := false,
+    publish / skip := true
+  )
+  .enablePlugins(AutomateHeaderPlugin)
+
+lazy val databricksExamples = (project in file("examples/databricks-examples"))
+  .dependsOn(sparkCobolServerless % "provided", sparkCobol % "test->test")
+  .settings(
+    name := "databricks-examples",
+    crossScalaVersions := List(scala213),
+    libraryDependencies ++= SparkCobolServerlessDependencies(scalaVersion.value) :+ getScalaDependency(scalaVersion.value),
+    Test / fork := true,
+    serverlessAssemblySettings,
+    assembly / assemblyJarName := "databricks-examples-bundle.jar",
+    publishArtifact := false,
+    publish / skip := true
+  )
+  .enablePlugins(AutomateHeaderPlugin)
+
 // scoverage settings
 ThisBuild / coverageExcludedPackages := ".*examples.*;.*replication.*"
 ThisBuild / coverageExcludedFiles := ".*Example.*;Test.*"
@@ -136,9 +164,19 @@ lazy val assemblySettings = Seq(
       xs map {_.toLowerCase} match {
         case "manifest.mf" :: Nil =>
           MergeStrategy.discard
-        case ps @ (x :: xs) if ps.last.endsWith(".sf") || ps.last.endsWith(".dsa") =>
+        case ps @ (x :: xs) if ps.last.endsWith(".sf") || ps.last.endsWith(".dsa") || ps.last.endsWith(".rsa") || ps.last.endsWith(".ec") =>
+          MergeStrategy.discard
+        case "versions" :: _ =>
           MergeStrategy.discard
         case "maven" :: x =>
+          MergeStrategy.discard
+        case "license.txt" :: Nil =>
+          MergeStrategy.discard
+        case "license" :: Nil =>
+          MergeStrategy.discard
+        case "notice.txt" :: Nil =>
+          MergeStrategy.discard
+        case "notice" :: Nil =>
           MergeStrategy.discard
         case "services" :: x =>
           MergeStrategy.filterDistinctLines
@@ -146,7 +184,7 @@ lazy val assemblySettings = Seq(
       }
     case _ => MergeStrategy.deduplicate
   },
-  assembly / assemblyOption:= (assembly / assemblyOption).value.copy(includeScala = false),
+  assemblyPackageScala / assembleArtifact := false,
   assembly / assemblyShadeRules:= Seq(
     // Spark may rely on a different version of ANTLR runtime. Renaming the package helps avoid the binary incompatibility
     ShadeRule.rename("org.antlr.**" -> "za.co.absa.cobrix.cobol.parser.shaded.org.antlr.@1").inAll,
@@ -158,4 +196,15 @@ lazy val assemblySettings = Seq(
   assembly / assemblyJarName := s"${name.value}_${scalaBinaryVersion.value}_${sparkVersionShort(scalaVersion.value)}-${version.value}-bundle.jar",
   assembly / logLevel := Level.Info,
   assembly / test := {}
+)
+
+lazy val serverlessAssemblySettings = assemblySettings ++ Seq(
+  assembly / assemblyShadeRules := Seq.empty,
+  assembly / assemblyExcludedJars := {
+    val cp = (assembly / fullClasspath).value
+    cp.filter { jar =>
+      val n = jar.data.getName.toLowerCase
+      n.contains("slf4j")
+    }
+  }
 )
