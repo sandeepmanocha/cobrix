@@ -1,0 +1,658 @@
+resources:
+  jobs:
+    cobrix_validate_smoke:
+      name: cobrix-validate-smoke
+      tasks:
+        - task_key: validate
+          environment_key: default
+          spark_jar_task:
+            main_class_name: za.co.absa.cobrix.spark.cobol.serverless.spike.TableValidationMain
+            parameters:
+              - '--table'
+              - ${var.catalog}.${var.schema}.cobrix_serverless_test1
+              - '--expected-count'
+              - '10'
+              - '--expected-json'
+              - /Volumes/${var.catalog}/${var.schema}/${var.volume}/test1_expected/test1.txt
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: ${var.environment_version}
+            java_dependencies:
+              - ${var.jar_path}
+              - ${var.examples_jar_path}
+
+    cobrix_serverless_varlen:
+      name: cobrix-serverless-varlen
+      tasks:
+        - task_key: read
+          environment_key: default
+          spark_jar_task:
+            main_class_name: za.co.absa.cobrix.spark.cobol.serverless.CobolServerlessMain
+            parameters:
+              - '--data'
+              - /Volumes/${var.catalog}/${var.schema}/${var.volume}/test21_data
+              - '--copybook'
+              - /Volumes/${var.catalog}/${var.schema}/${var.volume}/test21_copybook.cob
+              - '--record_format'
+              - F
+              - '--encoding'
+              - ascii
+              - '--variable_size_occurs'
+              - 'true'
+              - '--schema_retention_policy'
+              - keep_original
+              - '--out'
+              - ${var.catalog}.${var.schema}.cobrix_serverless_test21
+        - task_key: validate
+          depends_on:
+            - task_key: read
+          environment_key: default
+          spark_jar_task:
+            main_class_name: za.co.absa.cobrix.spark.cobol.serverless.spike.TableValidationMain
+            parameters:
+              - '--table'
+              - ${var.catalog}.${var.schema}.cobrix_serverless_test21
+              - '--expected-count'
+              - '5'
+              - '--expected-json'
+              - /Volumes/${var.catalog}/${var.schema}/${var.volume}/test21_expected/test21.txt
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: ${var.environment_version}
+            java_dependencies:
+              - ${var.jar_path}
+              - ${var.examples_jar_path}
+
+    cobrix_serverless_large_xl:
+      name: cobrix-serverless-large-xl
+      timeout_seconds: 14400
+      parameters:
+        - name: fixture_mode
+          default: skip_if_exists
+      tasks:
+        - task_key: generate
+          environment_key: default
+          spark_jar_task:
+            main_class_name: za.co.absa.cobrix.spark.cobol.serverless.spike.LargeFixtureGeneratorMain
+            parameters:
+              - ${var.data_path}/example.bin
+              - /Volumes/${var.catalog}/${var.schema}/${var.volume}/xl_test1_data/example-xl.bin
+              - '32212254721'
+              - '{{job.parameters.fixture_mode}}'
+        - task_key: read
+          depends_on:
+            - task_key: generate
+          environment_key: default
+          spark_jar_task:
+            main_class_name: za.co.absa.cobrix.spark.cobol.serverless.CobolServerlessMain
+            parameters:
+              - '--data'
+              - /Volumes/${var.catalog}/${var.schema}/${var.volume}/xl_test1_data
+              - '--copybook'
+              - ${var.copybook_path}
+              - '--schema_retention_policy'
+              - collapse_root
+              - '--out'
+              - ${var.catalog}.${var.schema}.cobrix_serverless_large_xl
+        - task_key: validate
+          depends_on:
+            - task_key: read
+          environment_key: default
+          spark_jar_task:
+            main_class_name: za.co.absa.cobrix.spark.cobol.serverless.spike.TableValidationMain
+            parameters:
+              - '--table'
+              - ${var.catalog}.${var.schema}.cobrix_serverless_large_xl
+              - '--expected-count'
+              - '14628640'
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: ${var.environment_version}
+            java_dependencies:
+              - ${var.jar_path}
+              - ${var.examples_jar_path}
+
+    cobrix_serverless_large:
+      name: cobrix-serverless-large
+      timeout_seconds: 7200
+      parameters:
+        - name: fixture_mode
+          default: skip_if_exists
+      tasks:
+        - task_key: generate
+          environment_key: default
+          spark_jar_task:
+            main_class_name: za.co.absa.cobrix.spark.cobol.serverless.spike.LargeFixtureGeneratorMain
+            parameters:
+              - ${var.data_path}/example.bin
+              - /Volumes/${var.catalog}/${var.schema}/${var.volume}/large_test1_data/example-large.bin
+              - '2147483649'
+              - '{{job.parameters.fixture_mode}}'
+        - task_key: read
+          depends_on:
+            - task_key: generate
+          environment_key: default
+          spark_jar_task:
+            main_class_name: za.co.absa.cobrix.spark.cobol.serverless.CobolServerlessMain
+            parameters:
+              - '--data'
+              - /Volumes/${var.catalog}/${var.schema}/${var.volume}/large_test1_data
+              - '--copybook'
+              - ${var.copybook_path}
+              - '--schema_retention_policy'
+              - collapse_root
+              - '--out'
+              - ${var.catalog}.${var.schema}.cobrix_serverless_large
+        - task_key: validate
+          depends_on:
+            - task_key: read
+          environment_key: default
+          spark_jar_task:
+            main_class_name: za.co.absa.cobrix.spark.cobol.serverless.spike.TableValidationMain
+            parameters:
+              - '--table'
+              - ${var.catalog}.${var.schema}.cobrix_serverless_large
+              - '--expected-count'
+              - '975250'
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: ${var.environment_version}
+            java_dependencies:
+              - ${var.jar_path}
+              - ${var.examples_jar_path}
+
+    cobrix_fail_closed:
+      name: cobrix-fail-closed
+      tasks:
+        - task_key: banned_format
+          environment_key: default
+          spark_python_task:
+            python_file: ../src/fail_closed.py
+            parameters:
+              - ${var.data_path}
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: ${var.environment_version}
+
+    cobrix_validate_classic_parity:
+      name: cobrix-validate-classic-parity
+      tasks:
+        - task_key: validate
+          environment_key: default
+          spark_jar_task:
+            main_class_name: za.co.absa.cobrix.spark.cobol.serverless.spike.TableValidationMain
+            parameters:
+              - '--table'
+              - ${var.catalog}.${var.schema}.cobrix_serverless_test1
+              - '--compare-table'
+              - ${var.catalog}.${var.schema}.cobrix_classic_parity_test1
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: ${var.environment_version}
+            java_dependencies:
+              - ${var.jar_path}
+              - ${var.examples_jar_path}
+
+    cobrix_serverless_v:
+      name: cobrix-serverless-v
+      tasks:
+        - task_key: read
+          environment_key: default
+          spark_jar_task:
+            main_class_name: za.co.absa.cobrix.spark.cobol.serverless.CobolServerlessMain
+            parameters:
+              - '--data'
+              - /Volumes/${var.catalog}/${var.schema}/${var.volume}/test17/HIERARCHICAL.DATA.RDW.dat
+              - '--copybook'
+              - /Volumes/${var.catalog}/${var.schema}/${var.volume}/test17_hierarchical.cob
+              - '--pedantic'
+              - 'true'
+              - '--record_format'
+              - V
+              - '--generate_record_id'
+              - 'true'
+              - '--schema_retention_policy'
+              - collapse_root
+              - '--segment_field'
+              - SEGMENT_ID
+              - '--redefine_segment_id_map:1'
+              - 'COMPANY => 1'
+              - '--redefine-segment-id-map:2'
+              - 'DEPT => 2'
+              - '--redefine-segment-id-map:3'
+              - 'EMPLOYEE => 3'
+              - '--redefine-segment-id-map:4'
+              - 'OFFICE => 4'
+              - '--redefine-segment-id-map:5'
+              - 'CUSTOMER => 5'
+              - '--redefine-segment-id-map:6'
+              - 'CONTACT => 6'
+              - '--redefine-segment-id-map:7'
+              - 'CONTRACT => 7'
+              - '--out'
+              - ${var.catalog}.${var.schema}.cobrix_serverless_test17
+        - task_key: validate
+          depends_on:
+            - task_key: read
+          environment_key: default
+          spark_jar_task:
+            main_class_name: za.co.absa.cobrix.spark.cobol.serverless.spike.TableValidationMain
+            parameters:
+              - '--table'
+              - ${var.catalog}.${var.schema}.cobrix_serverless_test17
+              - '--expected-count'
+              - '951'
+              - '--expected-json'
+              - /Volumes/${var.catalog}/${var.schema}/${var.volume}/test17_expected/test17a.txt
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: ${var.environment_version}
+            java_dependencies:
+              - ${var.jar_path}
+              - ${var.examples_jar_path}
+
+    cobrix_serverless_v_multi:
+      name: cobrix-serverless-v-multi
+      tasks:
+        - task_key: read
+          environment_key: default
+          spark_jar_task:
+            main_class_name: za.co.absa.cobrix.spark.cobol.serverless.CobolServerlessMain
+            parameters:
+              - '--data'
+              - /Volumes/${var.catalog}/${var.schema}/${var.volume}/test4_data
+              - '--copybook'
+              - /Volumes/${var.catalog}/${var.schema}/${var.volume}/test4_copybook.cob
+              - '--encoding'
+              - ascii
+              - '--record_format'
+              - V
+              - '--segment_field'
+              - SEGMENT_ID
+              - '--segment_id_level0'
+              - C
+              - '--segment_id_level1'
+              - P
+              - '--generate_record_id'
+              - 'true'
+              - '--schema_retention_policy'
+              - collapse_root
+              - '--segment_id_prefix'
+              - A
+              - '--out'
+              - ${var.catalog}.${var.schema}.cobrix_serverless_test4
+        - task_key: validate
+          depends_on:
+            - task_key: read
+          environment_key: default
+          spark_jar_task:
+            main_class_name: za.co.absa.cobrix.spark.cobol.serverless.spike.TableValidationMain
+            parameters:
+              - '--table'
+              - ${var.catalog}.${var.schema}.cobrix_serverless_test4
+              - '--expected-count'
+              - '1000'
+              - '--expected-json'
+              - /Volumes/${var.catalog}/${var.schema}/${var.volume}/test4_expected/test4.txt
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: ${var.environment_version}
+            java_dependencies:
+              - ${var.jar_path}
+              - ${var.examples_jar_path}
+
+    cobrix_serverless_ascii:
+      name: cobrix-serverless-ascii
+      tasks:
+        - task_key: read
+          environment_key: default
+          spark_jar_task:
+            main_class_name: za.co.absa.cobrix.spark.cobol.serverless.CobolServerlessMain
+            parameters:
+              - '--data'
+              - /Volumes/${var.catalog}/${var.schema}/${var.volume}/test40_data_ascii/ascii.txt
+              - '--copybook_contents'
+              - "       01  RECORD.\n           05  A1       PIC X(1).\n           05  A2       PIC X(5).\n           05  A3       PIC X(10).\n"
+              - '--is_text'
+              - 'true'
+              - '--encoding'
+              - ascii
+              - '--pedantic'
+              - 'true'
+              - '--out'
+              - ${var.catalog}.${var.schema}.cobrix_serverless_test40
+        - task_key: validate
+          depends_on:
+            - task_key: read
+          environment_key: default
+          spark_jar_task:
+            main_class_name: za.co.absa.cobrix.spark.cobol.serverless.spike.TableValidationMain
+            parameters:
+              - '--table'
+              - ${var.catalog}.${var.schema}.cobrix_serverless_test40
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: ${var.environment_version}
+            java_dependencies:
+              - ${var.jar_path}
+              - ${var.examples_jar_path}
+
+    cobrix_serverless_vb:
+      name: cobrix-serverless-vb
+      parameters:
+        - name: fixture_mode
+          default: skip_if_exists
+      tasks:
+        - task_key: generate
+          environment_key: default
+          spark_jar_task:
+            main_class_name: za.co.absa.cobrix.spark.cobol.serverless.spike.VbFixtureGeneratorMain
+            parameters:
+              - /Volumes/${var.catalog}/${var.schema}/${var.volume}/vb_test29_data/vb-1000.dat
+              - '1000'
+              - '{{job.parameters.fixture_mode}}'
+        - task_key: read
+          depends_on:
+            - task_key: generate
+          environment_key: default
+          spark_jar_task:
+            main_class_name: za.co.absa.cobrix.spark.cobol.serverless.CobolServerlessMain
+            parameters:
+              - '--data'
+              - /Volumes/${var.catalog}/${var.schema}/${var.volume}/vb_test29_data
+              - '--copybook_contents'
+              - "      01  R.\n                03 A        PIC X(2).\n"
+              - '--record_format'
+              - VB
+              - '--out'
+              - ${var.catalog}.${var.schema}.cobrix_serverless_test29
+        - task_key: validate
+          depends_on:
+            - task_key: read
+          environment_key: default
+          spark_jar_task:
+            main_class_name: za.co.absa.cobrix.spark.cobol.serverless.spike.TableValidationMain
+            parameters:
+              - '--table'
+              - ${var.catalog}.${var.schema}.cobrix_serverless_test29
+              - '--expected-count'
+              - '1000'
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: ${var.environment_version}
+            java_dependencies:
+              - ${var.jar_path}
+              - ${var.examples_jar_path}
+
+    cobrix_citi_option_packs:
+      name: cobrix-citi-option-packs
+      parameters:
+        - name: fixture_mode
+          default: skip_if_exists
+      tasks:
+        - task_key: generate
+          environment_key: default
+          spark_jar_task:
+            main_class_name: za.co.absa.cobrix.spark.cobol.serverless.spike.CitiFakeFixtureMain
+            parameters:
+              - /Volumes/${var.catalog}/${var.schema}/${var.volume}/citi_fakes
+              - '{{job.parameters.fixture_mode}}'
+        - task_key: read_vb_be
+          depends_on:
+            - task_key: generate
+          environment_key: default
+          spark_jar_task:
+            main_class_name: za.co.absa.cobrix.spark.cobol.serverless.CobolServerlessMain
+            parameters:
+              - '--data'
+              - /Volumes/${var.catalog}/${var.schema}/${var.volume}/citi_fakes/vb_be/data.dat
+              - '--copybook_contents'
+              - "      01  R.\n                03 A        PIC X(2).\n"
+              - '--record_format'
+              - VB
+              - '--is_bdw_big_endian'
+              - 'true'
+              - '--is_rdw_big_endian'
+              - 'true'
+              - '--bdw_adjustment'
+              - '-4'
+              - '--rdw_adjustment'
+              - '-4'
+              - '--out'
+              - ${var.catalog}.${var.schema}.cobrix_citi_vb_be
+        - task_key: validate_vb_be
+          depends_on:
+            - task_key: read_vb_be
+          environment_key: default
+          spark_jar_task:
+            main_class_name: za.co.absa.cobrix.spark.cobol.serverless.spike.TableValidationMain
+            parameters:
+              - '--table'
+              - ${var.catalog}.${var.schema}.cobrix_citi_vb_be
+              - '--expected-count'
+              - '20'
+        - task_key: read_v_occurs
+          depends_on:
+            - task_key: generate
+          environment_key: default
+          spark_jar_task:
+            main_class_name: za.co.absa.cobrix.spark.cobol.serverless.CobolServerlessMain
+            parameters:
+              - '--data'
+              - /Volumes/${var.catalog}/${var.schema}/${var.volume}/citi_fakes/v_occurs/data.dat
+              - '--copybook_contents'
+              - "      01  REC.\n                05 CNT PIC 9(1).\n                05 ARR OCCURS 0 TO 3 TIMES DEPENDING ON CNT.\n                   10 X PIC X(1).\n"
+              - '--record_format'
+              - V
+              - '--is_rdw_big_endian'
+              - 'true'
+              - '--rdw_adjustment'
+              - '-4'
+              - '--variable_size_occurs'
+              - 'true'
+              - '--ebcdic_code_page'
+              - cp1047
+              - '--out'
+              - ${var.catalog}.${var.schema}.cobrix_citi_v_occurs
+        - task_key: validate_v_occurs
+          depends_on:
+            - task_key: read_v_occurs
+          environment_key: default
+          spark_jar_task:
+            main_class_name: za.co.absa.cobrix.spark.cobol.serverless.spike.TableValidationMain
+            parameters:
+              - '--table'
+              - ${var.catalog}.${var.schema}.cobrix_citi_v_occurs
+              - '--expected-count'
+              - '3'
+        - task_key: read_vb_seg
+          depends_on:
+            - task_key: generate
+          environment_key: default
+          spark_jar_task:
+            main_class_name: za.co.absa.cobrix.spark.cobol.serverless.CobolServerlessMain
+            parameters:
+              - '--data'
+              - /Volumes/${var.catalog}/${var.schema}/${var.volume}/citi_fakes/vb_seg/data.dat
+              - '--copybook_contents'
+              - "      01  REC.\n                05 SEGMENT-ID PIC X(1).\n                05 BODY PIC X(2).\n"
+              - '--record_format'
+              - VB
+              - '--is_bdw_big_endian'
+              - 'true'
+              - '--is_rdw_big_endian'
+              - 'true'
+              - '--bdw_adjustment'
+              - '-4'
+              - '--rdw_adjustment'
+              - '-4'
+              - '--segment_field'
+              - SEGMENT_ID
+              - '--out'
+              - ${var.catalog}.${var.schema}.cobrix_citi_vb_seg
+        - task_key: validate_vb_seg
+          depends_on:
+            - task_key: read_vb_seg
+          environment_key: default
+          spark_jar_task:
+            main_class_name: za.co.absa.cobrix.spark.cobol.serverless.spike.TableValidationMain
+            parameters:
+              - '--table'
+              - ${var.catalog}.${var.schema}.cobrix_citi_vb_seg
+              - '--expected-count'
+              - '4'
+        - task_key: read_ascii_d
+          depends_on:
+            - task_key: generate
+          environment_key: default
+          spark_jar_task:
+            main_class_name: za.co.absa.cobrix.spark.cobol.serverless.CobolServerlessMain
+            parameters:
+              - '--data'
+              - /Volumes/${var.catalog}/${var.schema}/${var.volume}/citi_fakes/ascii_d/ascii.txt
+              - '--copybook_contents'
+              - "       01  RECORD.\n           05  A1       PIC X(1).\n           05  A2       PIC X(5).\n           05  A3       PIC X(10).\n"
+              - '--record_format'
+              - D
+              - '--encoding'
+              - ascii
+              - '--out'
+              - ${var.catalog}.${var.schema}.cobrix_citi_ascii_d
+        - task_key: validate_ascii_d
+          depends_on:
+            - task_key: read_ascii_d
+          environment_key: default
+          spark_jar_task:
+            main_class_name: za.co.absa.cobrix.spark.cobol.serverless.spike.TableValidationMain
+            parameters:
+              - '--table'
+              - ${var.catalog}.${var.schema}.cobrix_citi_ascii_d
+              - '--expected-count'
+              - '3'
+        - task_key: read_nested_name
+          depends_on:
+            - task_key: generate
+          environment_key: default
+          spark_jar_task:
+            main_class_name: za.co.absa.cobrix.spark.cobol.serverless.CobolServerlessMain
+            parameters:
+              - '--data'
+              - /Volumes/${var.catalog}/${var.schema}/${var.volume}/citi_fakes/nested_name/person.dat
+              - '--copybook_contents'
+              - "      01  PERSON.\n                05 ID PIC X(2).\n                05 NAME.\n                   10 FIRST-NAME PIC X(4).\n                   10 LAST-NAME PIC X(4).\n"
+              - '--encoding'
+              - ascii
+              - '--schema_retention_policy'
+              - keep_original
+              - '--out'
+              - ${var.catalog}.${var.schema}.cobrix_citi_nested_name
+        - task_key: validate_nested_name
+          depends_on:
+            - task_key: read_nested_name
+          environment_key: default
+          spark_jar_task:
+            main_class_name: za.co.absa.cobrix.spark.cobol.serverless.spike.TableValidationMain
+            parameters:
+              - '--table'
+              - ${var.catalog}.${var.schema}.cobrix_citi_nested_name
+              - '--expected-count'
+              - '3'
+        - task_key: read_control_dir
+          depends_on:
+            - task_key: generate
+          environment_key: default
+          spark_jar_task:
+            main_class_name: za.co.absa.cobrix.spark.cobol.serverless.CobolServerlessMain
+            parameters:
+              - '--data'
+              - /Volumes/${var.catalog}/${var.schema}/${var.volume}/citi_fakes/nested_name
+              - '--copybook_contents'
+              - "      01  PERSON.\n                05 ID PIC X(2).\n                05 NAME.\n                   10 FIRST-NAME PIC X(4).\n                   10 LAST-NAME PIC X(4).\n"
+              - '--encoding'
+              - ascii
+              - '--schema_retention_policy'
+              - keep_original
+              - '--out'
+              - ${var.catalog}.${var.schema}.cobrix_citi_control_dir
+        - task_key: validate_control_dir
+          depends_on:
+            - task_key: read_control_dir
+          environment_key: default
+          spark_jar_task:
+            main_class_name: za.co.absa.cobrix.spark.cobol.serverless.spike.TableValidationMain
+            parameters:
+              - '--table'
+              - ${var.catalog}.${var.schema}.cobrix_citi_control_dir
+              - '--expected-count'
+              - '3'
+        - task_key: read_f_pack
+          environment_key: default
+          spark_jar_task:
+            main_class_name: za.co.absa.cobrix.spark.cobol.serverless.CobolServerlessMain
+            parameters:
+              - '--data'
+              - ${var.data_path}
+              - '--copybook'
+              - ${var.copybook_path}
+              - '--schema_retention_policy'
+              - collapse_root
+              - '--ebcdic_code_page'
+              - cp037_extended
+              - '--string_trimming_policy'
+              - none
+              - '--comments_ubound'
+              - '120'
+              - '--out'
+              - ${var.catalog}.${var.schema}.cobrix_citi_f_pack
+        - task_key: validate_f_pack
+          depends_on:
+            - task_key: read_f_pack
+          environment_key: default
+          spark_jar_task:
+            main_class_name: za.co.absa.cobrix.spark.cobol.serverless.spike.TableValidationMain
+            parameters:
+              - '--table'
+              - ${var.catalog}.${var.schema}.cobrix_citi_f_pack
+              - '--expected-count'
+              - '10'
+        - task_key: read_cp1047
+          environment_key: default
+          spark_jar_task:
+            main_class_name: za.co.absa.cobrix.spark.cobol.serverless.CobolServerlessMain
+            parameters:
+              - '--data'
+              - /Volumes/${var.catalog}/${var.schema}/${var.volume}/test9_data
+              - '--copybook'
+              - /Volumes/${var.catalog}/${var.schema}/${var.volume}/test9_copybook.cob
+              - '--schema_retention_policy'
+              - collapse_root
+              - '--ebcdic_code_page'
+              - cp1047
+              - '--out'
+              - ${var.catalog}.${var.schema}.cobrix_citi_cp1047
+        - task_key: validate_cp1047
+          depends_on:
+            - task_key: read_cp1047
+          environment_key: default
+          spark_jar_task:
+            main_class_name: za.co.absa.cobrix.spark.cobol.serverless.spike.TableValidationMain
+            parameters:
+              - '--table'
+              - ${var.catalog}.${var.schema}.cobrix_citi_cp1047
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: ${var.environment_version}
+            java_dependencies:
+              - ${var.jar_path}
+              - ${var.examples_jar_path}

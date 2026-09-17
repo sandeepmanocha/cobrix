@@ -1,0 +1,44 @@
+resources:
+  jobs:
+    cobrix_serverless_reader:
+      name: cobrix-serverless-reader
+      tasks:
+        - task_key: read_cobol
+          environment_key: default
+          spark_jar_task:
+            main_class_name: za.co.absa.cobrix.spark.cobol.serverless.CobolServerlessMain
+            parameters:
+              - '--data'
+              - ${var.data_path}
+              - '--copybook'
+              - ${var.copybook_path}
+              - '--schema_retention_policy'
+              - collapse_root
+              - '--out'
+              - ${var.catalog}.${var.schema}.cobrix_serverless_test1
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: ${var.environment_version}
+            java_dependencies:
+              - ${var.jar_path}
+              - ${var.examples_jar_path}
+
+    cobrix_seek_spike:
+      name: cobrix-serverless-seek-spike
+      tasks:
+        - task_key: seek
+          environment_key: default
+          spark_jar_task:
+            main_class_name: za.co.absa.cobrix.spark.cobol.serverless.spike.SeekSpikeMain
+            parameters:
+              - ${var.data_path}/example.bin
+              - '0'
+              - '64'
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: ${var.environment_version}
+            java_dependencies:
+              - ${var.jar_path}
+              - ${var.examples_jar_path}
