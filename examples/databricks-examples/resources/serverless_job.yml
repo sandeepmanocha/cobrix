@@ -22,7 +22,6 @@ resources:
             environment_version: ${var.environment_version}
             java_dependencies:
               - ${var.jar_path}
-              - ${var.examples_jar_path}
 
     cobrix_seek_spike:
       name: cobrix-serverless-seek-spike

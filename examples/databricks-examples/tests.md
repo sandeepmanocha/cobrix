@@ -71,3 +71,5 @@ Append one row per run. Never overwrite prior rows. Try = 1 on first attempt; in
 | 2026-09-03 18:10 | D1-golden-smoke | databricks | 2 | 71s | PASS | | test1 table still 10 rows vs golden after SchemaAlign JAR | run 403225322769234 |
 | 2026-09-03 18:59 | CITI-FAKES-local | unit | 1 | 4s | FAIL | control dir: `.ctl` treated as COBOL (size not divisible by record length) | Log only; do not fix until discussed | 7/8 packs PASS; nested NAME under PERSON |
 | 2026-09-03 19:04 | CITI-FAKES-serverless | databricks | 1 | 242s | FAIL | `read_control_dir` same `.ctl` split error | Log only | run 628567040556747; all other pack tasks PASS |
+| 2026-10-29 22:06 | D1-smoke-maven | databricks | 1 | 80s | FAIL | Scala 2.12 leftover classes in Maven bundle (`GenTraversableOnce`); examples JAR also on classpath | `mvn clean package`; smoke job depends on product JAR only | run 756513674179348 |
+| 2026-10-29 22:09 | D1-smoke-maven | databricks | 2 | 103s | PASS | | Clean Maven 2.13 bundle; `java_dependencies` is `${var.jar_path}` only; 10 rows `citi_lab.citi_demo.cobrix_serverless_test1` | run 464845572218954 |
