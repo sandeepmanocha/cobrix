@@ -21,12 +21,12 @@
 
 	<parent>
 		<groupId>za.co.absa.cobrix</groupId>
-		<artifactId>cobrix_2.12</artifactId>
+		<artifactId>cobrix_2.13</artifactId>
 		<version>2.11.1-SNAPSHOT</version>
 		<relativePath>../pom.xml</relativePath>
 	</parent>
 
-	<artifactId>spark-cobol_2.12</artifactId>
+	<artifactId>spark-cobol_2.13</artifactId>
 	<packaging>jar</packaging>
 
 	<dependencies>

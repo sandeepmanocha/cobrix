@@ -71,3 +71,14 @@ Append one row per run. Never overwrite prior rows. Try = 1 on first attempt; in
 | 2026-09-03 18:10 | D1-golden-smoke | databricks | 2 | 71s | PASS | | test1 table still 10 rows vs golden after SchemaAlign JAR | run 403225322769234 |
 | 2026-09-03 18:59 | CITI-FAKES-local | unit | 1 | 4s | FAIL | control dir: `.ctl` treated as COBOL (size not divisible by record length) | Log only; do not fix until discussed | 7/8 packs PASS; nested NAME under PERSON |
 | 2026-09-03 19:04 | CITI-FAKES-serverless | databricks | 1 | 242s | FAIL | `read_control_dir` same `.ctl` split error | Log only | run 628567040556747; all other pack tasks PASS |
+| 2026-10-29 22:06 | D1-smoke-maven | databricks | 1 | 80s | FAIL | Scala 2.12 leftover classes in Maven bundle (`GenTraversableOnce`); examples JAR also on classpath | `mvn clean package`; smoke job depends on product JAR only | run 756513674179348 |
+| 2026-10-29 22:09 | D1-smoke-maven | databricks | 2 | 103s | PASS | | Clean Maven 2.13 bundle; `java_dependencies` is `${var.jar_path}` only; 10 rows `citi_lab.citi_demo.cobrix_serverless_test1` | run 464845572218954 |
+| 2026-10-29 22:14 | D1-golden-smoke-maven | databricks | 1 | 74s | PASS | | test1 golden 10 rows vs `test1_expected/test1.txt` | run 1043986358983621 |
+| 2026-10-29 22:15 | D2-varlen-maven | databricks | 1 | 137s | PASS | | test21 variable OCCURS; 5 rows | run 551349327656242 |
+| 2026-10-29 22:15 | FMT-v-test17-maven | databricks | 1 | 137s | PASS | | test17 V+RDW; 951 rows | run 1003141911506119 |
+| 2026-10-29 22:15 | FMT-v-multi-test4-maven | databricks | 1 | 137s | PASS | | test4 V multisegment; 1000 rows | run 215904663945269 |
+| 2026-10-29 22:15 | FMT-ascii-test40-maven | databricks | 1 | 126s | PASS | | test40 ASCII `is_text`; 3 rows | run 1086415199777511 |
+| 2026-10-29 22:16 | FMT-vb-1000-maven | databricks | 1 | 157s | PASS | | generated VB 1000 rows; `VB_FIXTURE_SKIPPED=false` | run 1079328784220752 |
+| 2026-10-29 22:14 | D5-fail-closed-maven | databricks | 1 | 34s | PASS | | `format("cobol").count()` → `DATA_SOURCE_NOT_FOUND` | run 574246154348074 |
+| 2026-10-29 22:17 | CITI-FAKES-serverless-maven | databricks | 1 | 242s | FAIL | `read_cp1047` `NoSuchFileException` `test9_copybook.cob` (not re-uploaded after catalog recycle); `read_control_dir` also `.ctl` | uploaded `data/test9_copybook.cob` + `data/test9_data/TRAN.APR14.NPT.DATA.dat`; do not fix `.ctl` | run 576889015319714 |
+| 2026-10-29 22:21 | CITI-FAKES-serverless-maven | databricks | 2 | 232s | FAIL | `read_control_dir`: `person.ctl` 11 bytes not divisible by 10-byte record | Log only; do not fix until discussed | run 944226402840682; 7/8 packs PASS including cp1047 1000 rows; only `.ctl` FAIL |

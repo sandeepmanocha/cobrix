@@ -133,6 +133,7 @@ lazy val sparkCobolServerless = (project in file("spark-cobol-serverless"))
     crossScalaVersions := List(scala213),
     libraryDependencies ++= SparkCobolServerlessDependencies(scalaVersion.value) :+ getScalaDependency(scalaVersion.value),
     serverlessAssemblySettings,
+    Compile / mainClass := Some("za.co.absa.cobrix.spark.cobol.serverless.CobolServerlessMain"),
     publishArtifact := false,
     publish / skip := true
   )
