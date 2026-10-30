@@ -81,6 +81,7 @@
         <module>cobol-parser</module>
         <module>cobol-converters</module>
         <module>spark-cobol</module>
+        <module>spark-cobol-serverless</module>
     </modules>
 
     <properties>

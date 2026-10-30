@@ -2,62 +2,50 @@
 
 Read COBOL / EBCDIC files on **Databricks Serverless**.
 
-Serverless does not allow `spark.read.format("cobol")` and does not allow RDD APIs. This library is the replacement. Copybook decode is the same Cobrix parser. You call a method instead of a data source.
+`spark.read.format("cobol")` does not work there. This library is the replacement. Copybook decode is the same Cobrix. You call a method instead of a data source.
 
-Tests, Databricks jobs, and sample scripts are in [`examples/databricks-examples`](../examples/databricks-examples).
+## Download and use (Citi)
 
----
+Take a JAR from [`artifacts/`](artifacts/). No sbt or Maven required.
 
-## 1. Put the files on a Volume
+| File | What |
+|--|--|
+| `spark-cobol-serverless_2.13-maven-bundle.jar` | Maven-built Serverless fat JAR (preferred) |
+| `spark-cobol-serverless_2.13-sbt-bundle.jar` | Same reader, built with sbt |
 
-Copybook and data must be on a Unity Catalog Volume, for example:
+Both are Scala **2.13** for Serverless environment version **5**. Same function, not the same bytes.
 
-```
-/Volumes/citi_lab/citi_demo/cobrix_poc/copybook.cob
-/Volumes/citi_lab/citi_demo/cobrix_poc/data
-```
+Do **not** use `databricks-examples-bundle.jar`. That is lab helpers, not the product.
 
-Do not point this reader at gzip or GPG files. Uncompress or decrypt first, then put the plain bytes on the Volume.
+1. Put the JAR, **copybook**, and **data** on a Unity Catalog Volume (`/Volumes/catalog/schema/volume/...`).
+2. Attach **only** the serverless bundle as a Java dependency on Serverless env 5.
+3. Point the reader at the **data file or data directory**, not a mixed folder of control files.
+4. If the feed is gzip or GPG, decrypt / uncompress first. Then land the plain bytes on the Volume.
 
----
+A `.ctl` (or any non-data file) next to the data currently fails the read. Point `--data` at the data file, or keep control files out of that directory.
 
-## 2. Build the JAR (once)
-
-On a Mac with JDK 11:
-
-```bash
-export JAVA_HOME=/opt/homebrew/opt/openjdk@11
-sbt "sparkCobolServerless/assembly"
-```
-
-Upload the bundle JAR to the same Volume.
-
----
-
-## 3. Read the file
-
-**From Scala / a notebook** (JAR on the cluster):
+### Notebook / Scala
 
 ```scala
 import za.co.absa.cobrix.spark.cobol.serverless.CobolServerlessReader
 
 val df = CobolServerlessReader.read(
   spark,
-  "/Volumes/citi_lab/citi_demo/cobrix_poc/data",
+  "/Volumes/catalog/schema/volume/data",
   Map(
-    "copybook" -> "/Volumes/citi_lab/citi_demo/cobrix_poc/copybook.cob",
+    "copybook" -> "/Volumes/catalog/schema/volume/copybook.cob",
     "schema_retention_policy" -> "collapse_root"
   )
 )
 
-df.write.mode("overwrite").saveAsTable("citi_lab.citi_demo.my_cobol_table")
+df.write.mode("overwrite").saveAsTable("catalog.schema.cobol_table")
 ```
 
-Option names are the same as classic Cobrix (`copybook`, `copybook_contents`, `record_format`, `schema_retention_policy`, `ebcdic_code_page`, and so on).
+Option names are the **same as classic Cobrix** (`copybook`, `copybook_contents`, `record_format`, `schema_retention_policy`, `ebcdic_code_page`, RDW/BDW flags, segment maps, and so on). After `read`, it is a normal DataFrame.
 
-**From a job**, main class:
+### JAR job
 
-`za.co.absa.cobrix.spark.cobol.serverless.CobolServerlessMain`
+Main class: `za.co.absa.cobrix.spark.cobol.serverless.CobolServerlessMain`
 
 ```
 --data /Volumes/.../data
@@ -66,45 +54,45 @@ Option names are the same as classic Cobrix (`copybook`, `copybook_contents`, `r
 --out catalog.schema.table
 ```
 
-Classic cluster (not Serverless) can still use:
+Do not register a `cobol` data source.
 
-```scala
-spark.read.format("cobol").option("copybook", "...").load("...")
-```
+### Do not
 
-That call **fails on Serverless**. That is expected.
+| | |
+|--|--|
+| `spark.read.format("cobol")` on Serverless | Banned. Use `CobolServerlessReader.read`. Classic clusters can still use `format("cobol")`. |
+| Hadoop / DBFS paths the Volume does not mount | Use `/Volumes/...`. |
+| gzip / GPG as the Spark input | Unpack before the job. |
+| `.ctl` beside the data | Treats the control file as COBOL and fails. |
+| `cache` / `persist` / `checkpoint` on this DataFrame | Not supported on Serverless. |
+| `spark.stop()` / `sys.exit()` in job code | Serverless owns the session. |
 
----
+If a write fails with `File_Id is nullable`, the reader already accounts for Spark Connect. Do not change the copybook or Cobrix core to “fix” it. If it still happens, the JAR is old.
 
-## 4. Rules to keep this working on Serverless
+### Classic vs Serverless
 
-Do these, or the job will break on Serverless:
+| | Classic cluster | Serverless |
+|--|--|--|
+| API | `spark.read.format("cobol")` | `CobolServerlessReader.read` (this JAR) |
+| JAR | `spark-cobol` | `artifacts/spark-cobol-serverless_2.13-*-bundle.jar` |
+| Options | Cobrix names | Same names |
+| Copybook decode | `cobol-parser` | Same library, untouched |
+| Files | DBFS / Hadoop paths | UC Volume (`/Volumes/...`) |
+| gzip / GPG | Classic Hadoop codecs | Rejected — unpack first |
 
-- Call `CobolServerlessReader.read` (or the JAR). Do not register a `cobol` data source.
-- Use Dataset / DataFrame APIs only. No `SparkContext`, no `.rdd`, no `sc.parallelize`.
-- Leave `cobol-parser` and classic `spark-cobol` alone. This module reuses them.
-- Do not call `spark.stop()` or `sys.exit()` in `main`. Serverless owns the session.
-- Do not `cache` / `persist` / `checkpoint` the COBOL DataFrame on Serverless.
-- Do not use `dbutils` inside `flatMap` / `mapPartitions`.
-- Local build: JDK 11, Scala 2.13. Serverless env version `5`.
+Files larger than 2 GB are supported (ranged NIO).
 
-If you change this module, keep Apache 2.0 headers and the same option names as classic Cobrix.
-
----
-
-## 5. If you see `File_Id is nullable`
-
-Spark Connect (Serverless) marks columns nullable even when Cobrix says `File_Id` / `Record_Id` are required. The values are still filled in. The reader already loosens nullability so `saveAsTable` works. You should not need to do anything.
-
-If that error comes back, the align step in `CobolServerlessReader.read` is missing. Do not change Cobrix core schema to “fix” it.
-
----
-
-## 6. Tests and Databricks jobs
+## Build from source (optional)
 
 ```bash
 export JAVA_HOME=/opt/homebrew/opt/openjdk@11
-sbt "databricksExamples/test"
+sbt "sparkCobolServerless/assembly"
+# copy: spark-cobol-serverless/target/scala-2.13/*-bundle.jar
+#    -> artifacts/spark-cobol-serverless_2.13-sbt-bundle.jar
+
+mvn -pl spark-cobol-serverless -am package -DskipTests
+# copy: spark-cobol-serverless/target/spark-cobol-serverless_2.13-*-bundle.jar
+#    -> artifacts/spark-cobol-serverless_2.13-maven-bundle.jar
 ```
 
-Job bundle: [`examples/databricks-examples`](../examples/databricks-examples). After a run, append a line to `examples/databricks-examples/TEST_REPORT.md`.
+Lab tests and Databricks jobs: [`examples/databricks-examples`](../examples/databricks-examples).
